@@ -168,27 +168,30 @@ class UserResource(Resource):
         if not verify_api_key():
             return jsonify({"message": "Unauthorized Access"}), 403
 
-        data = request.get_json()
-
-        # Extract data from the request
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        email = data.get("email")
-        username = data.get("username")
-        contact_number = data.get("contact_number")
-        address = data.get("address")
-
-        # Create a new User record
-        new_user = User(first_name=first_name, last_name=last_name, email=email, 
-                        username=username, contact_number=contact_number, address=str(address))
-        
         try:
+            data = request.get_json()
+
+            # Extract data from the request
+            first_name = data.get("first_name")
+            last_name = data.get("last_name")
+            email = data.get("email")
+            username = data.get("username")
+            contact_number = data.get("contact_number")
+            address = data.get("address")
+
+            # Create a new User record
+            new_user = User(first_name=first_name, last_name=last_name, email=email, 
+                            username=username, contact_number=contact_number, address=str(address))
+
             # Save the new user to the database
             db.session.add(new_user)
             db.session.commit()
+
             return jsonify({"message": "Data saved successfully"})
+
         except Exception as e:
-            db.session.rollback()
+            # Catch all exceptions and return the error message for debugging
+            db.session.rollback()  # Rollback any changes to avoid partial commits
             return jsonify({"message": f"Error saving data: {str(e)}"}), 500
 
 # GET method to retrieve all users from the database
@@ -212,6 +215,11 @@ class GetUserResource(Resource):
 # Add resources to API
 api.add_resource(UserResource, '/user')
 api.add_resource(GetUserResource, '/users')
+
+# Run the app
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
+    app.run(host="0.0.0.0", port=port)
 
 # Run the app
 if __name__ == '__main__':
