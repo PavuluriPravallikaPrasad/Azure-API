@@ -109,13 +109,11 @@ import os
 import json
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
-from flask_httpauth import HTTPTokenAuth
 from azure.storage.blob import BlobServiceClient
 
 # Initialize app and API
 app = Flask(__name__)
 api = Api(app)
-auth = HTTPTokenAuth(scheme='Bearer')
 
 # Secure API Key (you can store it in environment variables for better security)
 API_KEY = os.getenv("API_KEY")  # Retrieve API Key from environment variable
@@ -136,11 +134,11 @@ try:
 except Exception as e:
     print(f"Container already exists or an error occurred: {str(e)}")
 
-# API Key authentication
-@auth.verify_token
-def verify_token(token):
-    """Verify API Key authentication"""
-    if token == API_KEY:
+# Function to check API key from the request headers
+def check_api_key():
+    """Check if the API Key is correct"""
+    api_key_from_header = request.headers.get('X-API-KEY')  # Custom header for API key
+    if api_key_from_header == API_KEY:
         return True
     return False
 
@@ -151,8 +149,11 @@ def root():
 
 # POST method to store user data in Azure Blob Storage
 class UserResource(Resource):
-    @auth.login_required
     def post(self):
+        # Check if API Key is valid
+        if not check_api_key():
+            return jsonify({"message": "Unauthorized Access"}), 401
+        
         data = request.get_json()
 
         # Extract data from the request
@@ -187,8 +188,11 @@ class UserResource(Resource):
 
 # GET method to retrieve all user data from Azure Blob Storage
 class GetUserResource(Resource):
-    @auth.login_required
     def get(self):
+        # Check if API Key is valid
+        if not check_api_key():
+            return jsonify({"message": "Unauthorized Access"}), 401
+        
         try:
             # List all blobs in the container (retrieve all user files)
             blob_list = container_client.list_blobs()
@@ -211,6 +215,11 @@ class GetUserResource(Resource):
 # Add resources to API
 api.add_resource(UserResource, '/user')  # POST method for storing data
 api.add_resource(GetUserResource, '/users')  # GET method for retrieving data
+
+# Run the app
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
+    app.run(host="0.0.0.0", port=port)
 
 # Run the app on port 8000 (which Azure expects)
 if __name__ == '__main__':
