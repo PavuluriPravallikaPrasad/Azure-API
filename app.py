@@ -6,7 +6,7 @@
 # api = Api(app)
 
 # # Secure API Key
-# API_KEY = "b9f1e4cb-894a-417c-8b35-764b277d7bda"
+# API_KEY = "40240292-dfda-445f-a065-3ccc25c0b8e7"
 
 # # Storage for multiple users
 # users = []
@@ -73,7 +73,7 @@ api = Api(app)
 auth = HTTPTokenAuth(scheme='Bearer')
 
 # Secure API Key
-API_KEY = "your-secure-api-key"
+API_KEY = "40240292-dfda-445f-a065-3ccc25c0b8e7"
 
 # Set up the database URI from the environment variable
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
