@@ -212,13 +212,7 @@ class GetUserResource(Resource):
 api.add_resource(UserResource, '/user')  # POST method for storing data
 api.add_resource(GetUserResource, '/users')  # GET method for retrieving data
 
-# Run the app
+# Run the app on port 8000 (which Azure expects)
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
-    app.run(host="0.0.0.0", port=port)
-
-
-# Run the app
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
+    port = int(os.environ.get("PORT", 8000))  # Ensure it's 8000
     app.run(host="0.0.0.0", port=port)
