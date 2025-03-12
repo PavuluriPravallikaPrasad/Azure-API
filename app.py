@@ -101,9 +101,10 @@ api.add_resource(GetUserResource, '/users')
 
 # Run the app
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8000))  # Use Azure's dynamic port
+    # Get the port from the environment variable, default to 5000 if not set
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Flask app is running on port: {port}")  # Log the port for debugging purposes
     app.run(host="0.0.0.0", port=port)
-
 #####################################################################
 # import os
 # import json
