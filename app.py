@@ -3,7 +3,7 @@ from flask_restful import Api, Resource
 from flask_httpauth import HTTPTokenAuth
 import os
 
-app = Flask(_name_)
+app = Flask(__name__)  # Fix: __name__ instead of _name_
 api = Api(app)
 auth = HTTPTokenAuth(scheme='Bearer')
 
@@ -31,26 +31,19 @@ class User(Resource):
     @auth.login_required
     def post(self):
         data = request.get_json()
-        
-        user_data['first_name'] = data.get("first_name")
-        user_data['last_name'] = data.get("last_name")
-        user_data['username'] = data.get("username")
-        user_data['email'] = data.get("email")
-        user_data['contact_number'] = data.get("contact_number")
-        user_data['address'] = data.get("address")
-
-        return jsonify({"message": "Data saved successfully"})
+        user_data.update(data)  # Store all received data
+        return {"message": "Data saved successfully"}, 201
 
 # GET method to retrieve data
 class GetUser(Resource):
     @auth.login_required
     def get(self):
-        return jsonify(user_data)
+        return user_data, 200
 
 # Add resources to API
 api.add_resource(User, '/user')
 api.add_resource(GetUser, '/user/get')
 
-if _name_ == '_main_':
-    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
+if __name__ == '__main__':  # Fix: __name__
+    port = int(os.environ.get("PORT", 8000))  # Use port 8000 for Azure
     app.run(host="0.0.0.0", port=port)
