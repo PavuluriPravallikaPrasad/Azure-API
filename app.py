@@ -73,7 +73,7 @@ api = Api(app)
 API_KEY = "your-secure-api-key"
 
 # Azure SQL Database Connection String
-app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://username:password@server.database.windows.net:1433/UserDatabase?driver=ODBC+Driver+17+for+SQL+Server"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://api-jnj:Advent@123@api-jnj.database.windows.net:1433/api-jnj?driver=ODBC+Driver+17+for+SQL+Server"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
