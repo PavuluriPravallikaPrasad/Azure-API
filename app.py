@@ -109,7 +109,7 @@ import os
 import json
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContainerClient
 
 # Initialize app and API
 app = Flask(__name__)
@@ -125,14 +125,18 @@ STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 blob_service_client = BlobServiceClient.from_connection_string(STORAGE_CONNECTION_STRING)
 
 # Define the container name for storing user data
-container_name = "userdata"
-container_client = blob_service_client.get_container_client(container_name)
+container_name = "api-test"
 
 # Ensure the container exists (if not, create it)
 try:
-    container_client.create_container()
+    # Get container client and create the container if it doesn't exist
+    container_client = blob_service_client.get_container_client(container_name)
+    container_client.create_container()  # Will raise an error if container already exists
+    print(f"Container {container_name} created successfully.")
 except Exception as e:
-    print(f"Container already exists or an error occurred: {str(e)}")
+    # Handle the case where the container already exists or another error occurred
+    print(f"Container creation failed or container already exists: {str(e)}")
+    container_client = blob_service_client.get_container_client(container_name)
 
 # Function to check API key from the request headers
 def check_api_key():
@@ -219,9 +223,4 @@ api.add_resource(GetUserResource, '/users')  # GET method for retrieving data
 # Run the app
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
-    app.run(host="0.0.0.0", port=port)
-
-# Run the app on port 8000 (which Azure expects)
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8000))  # Ensure it's 8000
     app.run(host="0.0.0.0", port=port)
