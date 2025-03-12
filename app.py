@@ -57,7 +57,7 @@ app = Flask(__name__)
 api = Api(app)
 
 # Secure API Key
-API_KEY = "your-secure-api-key"
+API_KEY = "b9f1e4cb-894a-417c-8b35-764b277d7bda"
 
 # Storage for multiple users
 users = []
