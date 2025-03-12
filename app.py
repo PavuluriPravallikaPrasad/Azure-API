@@ -1,66 +1,98 @@
 # from flask import Flask, request, jsonify
 # from flask_restful import Api, Resource
-# from flask_httpauth import HTTPTokenAuth
 # import os
 
-# app = Flask(__name__)  # Fix: __name__ instead of _name_
+# app = Flask(__name__)
 # api = Api(app)
-# auth = HTTPTokenAuth(scheme='Bearer')
 
 # # Secure API Key
 # API_KEY = "b9f1e4cb-894a-417c-8b35-764b277d7bda"
 
-# # Dummy storage for received data
-# user_data = {}
+# # Storage for multiple users
+# users = []
 
-# # API key authentication
-# @auth.verify_token
-# def verify_token(token):
-#     """Allow Azure Health Checks Without API Key"""
-#     if request.endpoint == "root":
-#         return True  # Allow health check requests
-#     return token == API_KEY
+# # Middleware for API Key Authentication
+# def require_api_key(func):
+#     def wrapper(*args, **kwargs):
+#         api_key = request.headers.get("x-api-key")  # Get API key from headers
+#         if not api_key or api_key != API_KEY:
+#             return jsonify({"error": "Unauthorized access"}), 401
+#         return func(*args, **kwargs)
+#     return wrapper
 
 # # Home route (for health checks)
 # @app.route('/')
 # def root():
 #     return jsonify({"message": "API is running!"})
 
-# # POST method to store data
+# # POST method to store user data
 # class User(Resource):
-#     @auth.login_required
+#     @require_api_key
 #     def post(self):
 #         data = request.get_json()
-#         user_data.update(data)  # Store all received data
-#         return {"message": "Data saved successfully"}, 201
 
-# # GET method to retrieve data
-# class GetUser(Resource):
-#     @auth.login_required
+#         if not data:
+#             return jsonify({"error": "Invalid JSON payload"}), 400
+
+#         user = {
+#             "first_name": data.get("first_name"),
+#             "last_name": data.get("last_name"),
+#             "username": data.get("username"),
+#             "email": data.get("email"),
+#             "contact_number": data.get("contact_number"),
+#             "address": data.get("address"),
+#         }
+
+#         users.append(user)  # Append user to the list
+
+#         return jsonify({"message": "User data stored successfully"})
+
+# # GET method to retrieve all users
+# class GetUsers(Resource):
+#     @require_api_key
 #     def get(self):
-#         return user_data, 200
+#         return jsonify(users)  # Return list of all users
 
 # # Add resources to API
-# api.add_resource(User, '/user')
-# api.add_resource(GetUser, '/user/get')
+# api.add_resource(User, "/user")
+# api.add_resource(GetUsers, "/users")  # New endpoint for getting all users
 
-# if __name__ == '__main__':  # Fix: __name__
-#     port = int(os.environ.get("PORT", 8000))  # Use port 8000 for Azure
+# if __name__ == "__main__":
+#     port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
 #     app.run(host="0.0.0.0", port=port)
-
 
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
+from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
 api = Api(app)
 
 # Secure API Key
-API_KEY = "b9f1e4cb-894a-417c-8b35-764b277d7bda"
+API_KEY = "your-secure-api-key"
 
-# Storage for multiple users
-users = []
+# Azure SQL Database Configuration
+# Replace with your actual connection string
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 
+    "mssql+pyodbc://<username>:<password>@<server>.database.windows.net:1433/<dbname>?driver=ODBC+Driver+17+for+SQL+Server")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize SQLAlchemy
+db = SQLAlchemy(app)
+
+# User model (maps to Users table in Azure SQL Database)
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    email = db.Column(db.String(255))
+    username = db.Column(db.String(100))
+    contact_number = db.Column(db.String(50))
+    address = db.Column(db.String(255))
+
+    def __repr__(self):
+        return f"<User {self.first_name} {self.last_name}>"
 
 # Middleware for API Key Authentication
 def require_api_key(func):
@@ -71,13 +103,8 @@ def require_api_key(func):
         return func(*args, **kwargs)
     return wrapper
 
-# Home route (for health checks)
-@app.route('/')
-def root():
-    return jsonify({"message": "API is running!"})
-
 # POST method to store user data
-class User(Resource):
+class UserResource(Resource):
     @require_api_key
     def post(self):
         data = request.get_json()
@@ -85,30 +112,35 @@ class User(Resource):
         if not data:
             return jsonify({"error": "Invalid JSON payload"}), 400
 
-        user = {
-            "first_name": data.get("first_name"),
-            "last_name": data.get("last_name"),
-            "username": data.get("username"),
-            "email": data.get("email"),
-            "contact_number": data.get("contact_number"),
-            "address": data.get("address"),
-        }
+        # Create new user record
+        new_user = User(
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            email=data.get("email"),
+            username=data.get("username"),
+            contact_number=data.get("contact_number"),
+            address=str(data.get("address"))
+        )
 
-        users.append(user)  # Append user to the list
+        db.session.add(new_user)
+        db.session.commit()
 
-        return jsonify({"message": "User data stored successfully"})
+        return jsonify({"message": "User data stored successfully"}), 201
 
 # GET method to retrieve all users
 class GetUsers(Resource):
     @require_api_key
     def get(self):
-        return jsonify(users)  # Return list of all users
+        users = User.query.all()  # Query all users from the database
+        users_list = [{"id": user.id, "first_name": user.first_name, "last_name": user.last_name,
+                       "email": user.email, "username": user.username, "contact_number": user.contact_number,
+                       "address": user.address} for user in users]
+        return jsonify(users_list)
 
 # Add resources to API
-api.add_resource(User, "/user")
-api.add_resource(GetUsers, "/users")  # New endpoint for getting all users
+api.add_resource(UserResource, "/user")
+api.add_resource(GetUsers, "/users")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
     app.run(host="0.0.0.0", port=port)
-
