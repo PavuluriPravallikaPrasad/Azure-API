@@ -105,8 +105,8 @@
 #     app.run(host="0.0.0.0", port=port)
 
 #####################################################################
-
 import os
+import logging
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
@@ -127,6 +127,9 @@ db = SQLAlchemy(app)
 
 # Dummy storage for received data (can be removed once the database is connected)
 user_data = {}
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
 
 # API key authentication
 def verify_api_key():
@@ -171,6 +174,10 @@ class UserResource(Resource):
         try:
             data = request.get_json()
 
+            # Check if the data is empty or missing critical fields
+            if not data or not all(k in data for k in ["first_name", "last_name", "email", "username", "contact_number", "address"]):
+                return jsonify({"message": "Missing required fields"}), 400
+
             # Extract data from the request
             first_name = data.get("first_name")
             last_name = data.get("last_name")
@@ -190,7 +197,8 @@ class UserResource(Resource):
             return jsonify({"message": "Data saved successfully"})
 
         except Exception as e:
-            # Catch all exceptions and return the error message for debugging
+            # Log the error and return a specific message
+            logging.error(f"Error saving data: {str(e)}")
             db.session.rollback()  # Rollback any changes to avoid partial commits
             return jsonify({"message": f"Error saving data: {str(e)}"}), 500
 
@@ -210,16 +218,12 @@ class GetUserResource(Resource):
 
             return jsonify(users_data)
         except Exception as e:
+            logging.error(f"Error retrieving data: {str(e)}")
             return jsonify({"message": f"Error retrieving data: {str(e)}"}), 500
 
 # Add resources to API
 api.add_resource(UserResource, '/user')
 api.add_resource(GetUserResource, '/users')
-
-# Run the app
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
-    app.run(host="0.0.0.0", port=port)
 
 # Run the app
 if __name__ == '__main__':
