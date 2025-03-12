@@ -59,8 +59,8 @@ api = Api(app)
 # Secure API Key
 API_KEY = "your-secure-api-key"
 
-# Dummy storage for received data
-user_data = {}
+# Storage for multiple users
+users = []
 
 # Middleware for API Key Authentication
 def require_api_key(func):
@@ -85,25 +85,30 @@ class User(Resource):
         if not data:
             return jsonify({"error": "Invalid JSON payload"}), 400
 
-        user_data["first_name"] = data.get("first_name")
-        user_data["last_name"] = data.get("last_name")
-        user_data["username"] = data.get("username")
-        user_data["email"] = data.get("email")
-        user_data["contact_number"] = data.get("contact_number")
-        user_data["address"] = data.get("address")
+        user = {
+            "first_name": data.get("first_name"),
+            "last_name": data.get("last_name"),
+            "username": data.get("username"),
+            "email": data.get("email"),
+            "contact_number": data.get("contact_number"),
+            "address": data.get("address"),
+        }
+
+        users.append(user)  # Append user to the list
 
         return jsonify({"message": "User data stored successfully"})
 
-# GET method to retrieve stored user data
-class GetUser(Resource):
+# GET method to retrieve all users
+class GetUsers(Resource):
     @require_api_key
     def get(self):
-        return jsonify(user_data)
+        return jsonify(users)  # Return list of all users
 
 # Add resources to API
 api.add_resource(User, "/user")
-api.add_resource(GetUser, "/user/get")
+api.add_resource(GetUsers, "/users")  # New endpoint for getting all users
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
     app.run(host="0.0.0.0", port=port)
+
