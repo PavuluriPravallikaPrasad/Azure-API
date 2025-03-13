@@ -43,7 +43,7 @@ class User(db.Model):
     email = db.Column(db.String(100), unique=True)
     username = db.Column(db.String(100), unique=True)
     contact_number = db.Column(db.String(20))
-    address = db.Column(db.String(255))
+    address = db.Column(db.String(255))  # Store the address as a string
 
     def __init__(self, first_name, last_name, email, username, contact_number, address):
         self.first_name = first_name
@@ -101,10 +101,9 @@ api.add_resource(GetUserResource, '/users')
 
 # Run the app
 if __name__ == '__main__':
-    # Get the port from the environment variable, default to 5000 if not set
-    port = int(os.environ.get("PORT", 5000))
-    print(f"Flask app is running on port: {port}")  # Log the port for debugging purposes
+    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
     app.run(host="0.0.0.0", port=port)
+
 #####################################################################
 # import os
 # import json
