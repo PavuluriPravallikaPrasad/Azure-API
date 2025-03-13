@@ -1,110 +1,201 @@
 import os
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
-from flask_httpauth import HTTPTokenAuth
 from flask_sqlalchemy import SQLAlchemy
 
-# Initialize app and API
+# Initialize Flask App
 app = Flask(__name__)
 api = Api(app)
-auth = HTTPTokenAuth(scheme='Bearer')
 
-# Secure API Key
+# API Key for Authentication
 API_KEY = "40240292-dfda-445f-a065-3ccc25c0b8e7"
 
-# Set up the database URI from the environment variable
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
+# Configure Database (Change Credentials)
+app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://api-jnj:Advent@123@api-jnj.database.windows.net:1433/api-jnj?driver=ODBC+Driver+18+for+SQL+Server"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize the database
+# Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
-# Dummy storage for received data (can be removed once the database is connected)
-user_data = {}
-
-# API key authentication
-@auth.verify_token
-def verify_token(token):
-    """Allow Azure Health Checks Without API Key"""
-    if request.endpoint == "root":
-        return True  # Allow health check requests
-    return token == API_KEY
-
-# Home route (for health checks)
-@app.route('/')
-def root():
-    return jsonify({"message": "API is running!"})
-
-# Define the User model (this will map to your database table)
+# Define User Model
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(100))
-    last_name = db.Column(db.String(100))
-    email = db.Column(db.String(100), unique=True)
-    username = db.Column(db.String(100), unique=True)
-    contact_number = db.Column(db.String(20))
-    address = db.Column(db.String(255))  # Store the address as a string
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    contact_number = db.Column(db.String(20), nullable=False)
+    address = db.Column(db.Text, nullable=False)
 
-    def __init__(self, first_name, last_name, email, username, contact_number, address):
-        self.first_name = first_name
-        self.last_name = last_name
-        self.email = email
-        self.username = username
-        self.contact_number = contact_number
-        self.address = address
+# Create the Database Tables
+with app.app_context():
+    db.create_all()
 
-# POST method to store data in the database
+# Authentication Middleware
+def authenticate_request():
+    api_key = request.headers.get("x-api-key")
+    if api_key != API_KEY:
+        return jsonify({"message": "Unauthorized Access"}), 401
+
+# POST Method to Store Data
 class UserResource(Resource):
-    @auth.login_required
     def post(self):
-        data = request.get_json()
-
-        # Extract data from the request
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        email = data.get("email")
-        username = data.get("username")
-        contact_number = data.get("contact_number")
-        address = data.get("address")
-
-        # Create a new User record
-        new_user = User(first_name=first_name, last_name=last_name, email=email, 
-                        username=username, contact_number=contact_number, address=str(address))
+        auth_error = authenticate_request()
+        if auth_error:
+            return auth_error
         
+        data = request.get_json()
+        new_user = User(
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            email=data["email"],
+            username=data["username"],
+            contact_number=data["contact_number"],
+            address=str(data["address"])
+        )
         try:
-            # Save the new user to the database
             db.session.add(new_user)
             db.session.commit()
-            return jsonify({"message": "Data saved successfully"})
+            return jsonify({"message": "User added successfully!"})
         except Exception as e:
             db.session.rollback()
-            return jsonify({"message": f"Error saving data: {str(e)}"}), 500
+            return jsonify({"message": f"Database error: {str(e)}"}), 500
 
-# GET method to retrieve all users from the database
+# GET Method to Retrieve Users
 class GetUserResource(Resource):
-    @auth.login_required
     def get(self):
-        try:
-            users = User.query.all()  # Get all users from the database
-            users_data = [{"first_name": user.first_name, "last_name": user.last_name, 
-                           "email": user.email, "username": user.username, 
-                           "contact_number": user.contact_number, "address": user.address} 
-                          for user in users]
+        auth_error = authenticate_request()
+        if auth_error:
+            return auth_error
+        
+        users = User.query.all()
+        return jsonify([{
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "username": user.username,
+            "contact_number": user.contact_number,
+            "address": user.address
+        } for user in users])
 
-            return jsonify(users_data)
-        except Exception as e:
-            return jsonify({"message": f"Error retrieving data: {str(e)}"}), 500
+# Define Routes
+api.add_resource(UserResource, "/user")
+api.add_resource(GetUserResource, "/users")
 
-# Add resources to API
-api.add_resource(UserResource, '/user')
-api.add_resource(GetUserResource, '/users')
+# Run Flask App
+if __name__ == "__main__":
+    app.run(debug=True)
 
-# Run the app
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
-    app.run(host="0.0.0.0", port=port)
+# #####################################################################
+# Storage
+# import os
+# from flask import Flask, request, jsonify
+# from flask_restful import Api, Resource
+# from flask_httpauth import HTTPTokenAuth
+# from flask_sqlalchemy import SQLAlchemy
+
+# # Initialize app and API
+# app = Flask(__name__)
+# api = Api(app)
+# auth = HTTPTokenAuth(scheme='Bearer')
+
+# # Secure API Key
+# API_KEY = "40240292-dfda-445f-a065-3ccc25c0b8e7"
+
+# # Set up the database URI from the environment variable
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# # Initialize the database
+# db = SQLAlchemy(app)
+
+# # Dummy storage for received data (can be removed once the database is connected)
+# user_data = {}
+
+# # API key authentication
+# @auth.verify_token
+# def verify_token(token):
+#     """Allow Azure Health Checks Without API Key"""
+#     if request.endpoint == "root":
+#         return True  # Allow health check requests
+#     return token == API_KEY
+
+# # Home route (for health checks)
+# @app.route('/')
+# def root():
+#     return jsonify({"message": "API is running!"})
+
+# # Define the User model (this will map to your database table)
+# class User(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     first_name = db.Column(db.String(100))
+#     last_name = db.Column(db.String(100))
+#     email = db.Column(db.String(100), unique=True)
+#     username = db.Column(db.String(100), unique=True)
+#     contact_number = db.Column(db.String(20))
+#     address = db.Column(db.String(255))  # Store the address as a string
+
+#     def __init__(self, first_name, last_name, email, username, contact_number, address):
+#         self.first_name = first_name
+#         self.last_name = last_name
+#         self.email = email
+#         self.username = username
+#         self.contact_number = contact_number
+#         self.address = address
+
+# # POST method to store data in the database
+# class UserResource(Resource):
+#     @auth.login_required
+#     def post(self):
+#         data = request.get_json()
+
+#         # Extract data from the request
+#         first_name = data.get("first_name")
+#         last_name = data.get("last_name")
+#         email = data.get("email")
+#         username = data.get("username")
+#         contact_number = data.get("contact_number")
+#         address = data.get("address")
+
+#         # Create a new User record
+#         new_user = User(first_name=first_name, last_name=last_name, email=email, 
+#                         username=username, contact_number=contact_number, address=str(address))
+        
+#         try:
+#             # Save the new user to the database
+#             db.session.add(new_user)
+#             db.session.commit()
+#             return jsonify({"message": "Data saved successfully"})
+#         except Exception as e:
+#             db.session.rollback()
+#             return jsonify({"message": f"Error saving data: {str(e)}"}), 500
+
+# # GET method to retrieve all users from the database
+# class GetUserResource(Resource):
+#     @auth.login_required
+#     def get(self):
+#         try:
+#             users = User.query.all()  # Get all users from the database
+#             users_data = [{"first_name": user.first_name, "last_name": user.last_name, 
+#                            "email": user.email, "username": user.username, 
+#                            "contact_number": user.contact_number, "address": user.address} 
+#                           for user in users]
+
+#             return jsonify(users_data)
+#         except Exception as e:
+#             return jsonify({"message": f"Error retrieving data: {str(e)}"}), 500
+
+# # Add resources to API
+# api.add_resource(UserResource, '/user')
+# api.add_resource(GetUserResource, '/users')
+
+# # Run the app
+# if __name__ == '__main__':
+#     port = int(os.environ.get("PORT", 8080))  # Use Azure's dynamic port
+#     app.run(host="0.0.0.0", port=port)
 
 #####################################################################
+#----------------Blob
 # import os
 # import json
 # from flask import Flask, request, jsonify
