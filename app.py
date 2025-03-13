@@ -11,7 +11,7 @@ api = Api(app)
 API_KEY = "40240292-dfda-445f-a065-3ccc25c0b8e7"
 
 # Configure Database (Change Credentials)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://api-jnj:Advent@123@api-jnj.database.windows.net:1433/api-jnj?driver=ODBC+Driver+18+for+SQL+Server"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
