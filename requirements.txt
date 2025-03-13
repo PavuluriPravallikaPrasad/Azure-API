@@ -1,5 +1,6 @@
-azure-storage-blob
 flask
 flask-restful
 flask-httpauth
+gunicorn
 flask-sqlalchemy
+pyodbc
